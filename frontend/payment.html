@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تفعيل الاشتراك | منصة التميز</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-slate: #f8fafc;
+            --deep-teal: #0d9488;
+            --glass-bg: rgba(255, 255, 255, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --text-main: #1e293b;
+            --shadow-soft: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            --danger: #e11d48;
+            --success: #059669;
+            --accent-blue: #38bdf8;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: var(--bg-slate);
+            margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh;
+        }
+
+        .glass-card {
+            background: var(--glass-bg); backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border); border-radius: 28px;
+            padding: 40px; width: 100%; max-width: 450px; box-shadow: var(--shadow-soft); text-align: center;
+        }
+
+        .offers-container {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;
+        }
+        .offer-opt {
+            border: 2px solid #e2e8f0; border-radius: 15px; padding: 15px 10px; cursor: pointer; transition: 0.3s;
+        }
+        .offer-opt.active { border-color: var(--deep-teal); background: #f0fdfa; }
+        .offer-opt h4 { margin: 0; font-size: 14px; }
+        .offer-opt span { font-weight: 900; color: var(--deep-teal); font-size: 18px; }
+
+        .cash-box {
+            background: #ffffff; border-radius: 18px; padding: 15px; margin-bottom: 20px;
+            border: 2px dashed var(--deep-teal); display: flex; flex-direction: column; align-items: center; gap: 10px;
+        }
+
+        #vodafoneCashNum { color: var(--deep-teal); font-size: 24px; font-weight: 700; }
+
+        .copy-btn {
+            background: var(--deep-teal); color: white; border: none; border-radius: 8px;
+            padding: 6px 15px; cursor: pointer; font-family: 'Cairo';
+        }
+
+        .input-group { text-align: right; margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-size: 13px; font-weight: 700; color: #475569; }
+
+        input {
+            width: 100%; padding: 14px; background: white; border: 1px solid #e2e8f0;
+            border-radius: 12px; text-align: center; font-size: 15px; outline: none; box-sizing: border-box; font-family: 'Cairo';
+        }
+
+        .btn {
+            width: 100%; background: var(--deep-teal); color: white; border: none;
+            padding: 16px; border-radius: 14px; font-weight: 700; cursor: pointer; font-family: 'Cairo'; font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .btn-trial {
+            background: #64748b;
+            font-size: 14px;
+            padding: 12px;
+        }
+
+        #codeArea, #disabledPayment { display: none; }
+        .code-display { font-size: 32px; font-weight: 900; color: var(--accent-blue); margin: 20px 0; letter-spacing: 3px; border: 2px dashed var(--accent-blue); padding: 10px; border-radius: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="glass-card">
+    <div id="activePayment">
+        <h2 style="color: var(--text-main); margin-bottom: 15px;">خطوات تفعيل الاشتراك 💳</h2>
+        
+        <div class="offers-container">
+            <div class="offer-opt active" onclick="selectOffer(this, 'month')">
+                <h4>اشتراك شهر</h4>
+                <span id="priceMonth">--</span> ج.م
+            </div>
+            <div class="offer-opt" onclick="selectOffer(this, 'year')">
+                <h4>اشتراك سنة</h4>
+                <span id="priceYear">--</span> ج.م
+            </div>
+        </div>
+
+        <div class="cash-box">
+            <p style="margin: 0; font-size: 14px; color: #64748b;">حوّل المبلغ لرقم المدرس:</p>
+            <div style="background: #f1f5f9; padding: 8px 15px; border-radius: 10px; display: flex; align-items: center; gap: 10px;">
+                <span id="vodafoneCashNum">01XXXXXXXXX</span>
+                <button class="copy-btn" onclick="copyText('vodafoneCashNum')">نسخ الرقم</button>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>اسم الطالب بالكامل</label>
+            <input type="text" id="studentName" placeholder="اكتب اسمك الثلاثي">
+        </div>
+
+        <div class="input-group">
+            <label>رقم موبايلك (مهم جداً للاسترجاع)</label>
+            <input type="tel" id="studentPhone" placeholder="01XXXXXXXXX" maxlength="11">
+        </div>
+
+        <div class="input-group" id="walletInputArea">
+            <label>رقم المحفظة التي حوّلت منها</label>
+            <input type="tel" id="senderNum" placeholder="الرقم الذي أرسل المال" maxlength="11">
+        </div>
+
+        <button class="btn" onclick="handleFinalSubmit('paid')">تأكيد التحويل وإظهار الكود 🚀</button>
+        
+        <div style="margin: 15px 0; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+            <p style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">أو جرب المنصة مجاناً</p>
+            <button class="btn btn-trial" id="trialBtn" onclick="handleTrialRequest()">توليد كود تجريبي (ساعتين) 🎁</button>
+        </div>
+    </div>
+
+    <div id="codeArea">
+        <div style="font-size: 50px;">🥳</div>
+        <h3 id="congratsMsg" style="color: var(--success);">مبروك! تم توليد كودك</h3>
+        <p id="trialNotice" style="font-size: 14px; color: var(--danger); display:none; font-weight:bold;">* هذا الكود صالح لمدة ساعتين فقط لمرة واحدة</p>
+        <p style="font-size: 14px; color: #64748b;">انسخ الكود بالأسفل وسجل به دخولك فوراً:</p>
+        <div class="code-display" id="finalCodeDisplay"></div>
+        <button class="btn" style="background: var(--accent-blue);" onclick="copyAndRedirect()">نسخ الكود والتوجه للدخول</button>
+        <p style="margin-top: 15px; font-size: 12px; color: var(--danger);">* ملاحظة: تم ربط هذا الكود بجهازك الحالي (نظام الحماية).</p>
+    </div>
+
+    <div id="disabledPayment">
+        <div style="font-size: 50px;">⏳</div>
+        <h3 style="color: var(--danger);">نعتذر، الدفع معطل حالياً</h3>
+        <p id="disableMsg">سيتم فتح الدفع قريباً</p>
+    </div>
+</div>
+
+<script>
+    let currentSelectedType = 'month';
+    let db = JSON.parse(localStorage.getItem('academyDB')) || { users: [], monthlyIncome: 0, payment: {active: true, number: "01XXXXXXXXX"}, prices: {month: 100, year: 800} };
+
+    function initPage() {
+        if (!db.payment) return;
+        if (db.payment.active === false) {
+            document.getElementById('activePayment').style.display = 'none';
+            document.getElementById('disabledPayment').style.display = 'block';
+            document.getElementById('disableMsg').innerText = db.payment.desc || "الدفع معطل حالياً";
+            return;
+        }
+        document.getElementById('vodafoneCashNum').innerText = db.payment.number || "01XXXXXXXXX";
+        document.getElementById('priceMonth').innerText = db.prices?.month || "100";
+        document.getElementById('priceYear').innerText = db.prices?.year || "800";
+    }
+
+    function selectOffer(el, type) {
+        document.querySelectorAll('.offer-opt').forEach(o => o.classList.remove('active'));
+        el.classList.add('active');
+        currentSelectedType = type;
+    }
+
+    function handleTrialRequest() {
+        const name = document.getElementById('studentName').value.trim();
+        const phone = document.getElementById('studentPhone').value.trim();
+        if (!name || phone.length < 11) return alert("يرجى إدخال الاسم ورقم الموبايل أولاً لتفعيل التجربة");
+        
+        const existing = db.users.find(u => u.phone === phone);
+        if (existing) {
+            alert("⚠️ أنت مسجل بالفعل لدينا بهذا الرقم. إليك كودك السابق:");
+            showCodeUI(existing.code, existing.walletUsed === "TRIAL");
+            return;
+        }
+        if (localStorage.getItem('_trial_claimed')) return alert("❌ عذراً، هذا الجهاز استخدم الكود التجريبي مسبقاً.");
+        handleFinalSubmit('trial');
+    }
+
+    function handleFinalSubmit(mode) {
+        const name = document.getElementById('studentName').value.trim();
+        const personalPhone = document.getElementById('studentPhone').value.trim(); 
+        const walletPhone = document.getElementById('senderNum').value.trim(); 
+
+        if (!name || personalPhone.length < 11) return alert("يرجى التأكد من كتابة الاسم ورقم الهاتف بشكل صحيح");
+        if (mode === 'paid' && walletPhone.length < 11) return alert("يرجى كتابة رقم المحفظة المحول منها");
+
+        const existingStudent = db.users.find(u => u.phone === personalPhone);
+        if (existingStudent) {
+            alert("⚠️ هذا الرقم مسجل بالفعل بكود سابق.");
+            showCodeUI(existingStudent.code, existingStudent.walletUsed === "TRIAL");
+            return;
+        }
+
+        const newCode = (mode === 'trial' ? "FREE-" : "ACAD-") + Math.floor(100000 + Math.random() * 900000);
+        let expiry = new Date();
+
+        if (mode === 'trial') {
+            expiry.setHours(expiry.getHours() + 2); 
+            localStorage.setItem('_trial_claimed', 'true'); 
+        } else {
+            expiry.setDate(expiry.getDate() + (currentSelectedType === 'month' ? 30 : 365));
+            const amount = currentSelectedType === 'month' ? Number(db.prices.month) : Number(db.prices.year);
+            db.monthlyIncome = (db.monthlyIncome || 0) + amount;
+        }
+
+        const newStudent = {
+            id: Date.now().toString(),
+            name: name,
+            phone: personalPhone, 
+            walletUsed: mode === 'trial' ? "TRIAL" : walletPhone, 
+            code: newCode,
+            status: 'active',
+            expiryDate: expiry.toISOString(),
+            deviceLock: null 
+        };
+
+        db.users.push(newStudent);
+        localStorage.setItem('academyDB', JSON.stringify(db));
+        showCodeUI(newCode, mode === 'trial');
+    }
+
+    function showCodeUI(code, isTrial) {
+        document.getElementById('activePayment').style.display = 'none';
+        document.getElementById('codeArea').style.display = 'block';
+        document.getElementById('finalCodeDisplay').innerText = code;
+        if (isTrial) {
+            document.getElementById('trialNotice').style.display = 'block';
+            document.getElementById('congratsMsg').innerText = "كود التجربة الخاص بك";
+        } else {
+            document.getElementById('trialNotice').style.display = 'none';
+            document.getElementById('congratsMsg').innerText = "مبروك! كود التفعيل الخاص بك";
+        }
+    }
+
+    function copyText(id) {
+        const text = document.getElementById(id).innerText;
+        navigator.clipboard.writeText(text).then(() => alert("تم نسخ رقم التحويل"));
+    }
+
+    // --- الدالة المعدلة لتسجيل الدخول التلقائي ---
+    function copyAndRedirect() {
+        const code = document.getElementById('finalCodeDisplay').innerText;
+        const currentDB = JSON.parse(localStorage.getItem('academyDB'));
+        
+        // البحث عن بيانات الطالب لضمان صحة البيانات
+        const student = currentDB.users.find(u => u.code === code);
+
+        if (student) {
+            // حفظ جلسة الدخول في المتصفح فوراً
+            localStorage.setItem('currentUser', JSON.stringify({
+                name: student.name,
+                code: student.code
+            }));
+
+            navigator.clipboard.writeText(code).then(() => {
+                alert("تم نسخ الكود وتسجيل دخولك تلقائياً! جارٍ التحويل...");
+                window.location.href = 'index.html';
+            });
+        } else {
+            // في حال حدوث خطأ غير متوقع، التوجه لصفحة الدخول العادية
+            window.location.href = 'index.html';
+        }
+    }
+
+    window.onload = initPage;
+</script>
+</body>
+</html>
