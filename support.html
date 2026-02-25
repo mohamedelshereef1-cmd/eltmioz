@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;900&display=swap" rel="stylesheet">
+    <title>الدعم الفني | أكاديمية التميز</title>
+    <style>
+        body { font-family: 'Cairo', sans-serif; background: #020617; color: white; }
+        .card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            transition: 0.3s;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.5rem;
+        }
+        .card:hover { border-color: #0d9488; background: rgba(255,255,255,0.08); transform: translateY(-2px); }
+
+        .muted { color: rgba(148,163,184,.9); font-weight: 800; font-size: 12px; }
+        .pill {
+            display:inline-flex; align-items:center; gap:8px;
+            background: rgba(13,148,136,.12);
+            border: 1px solid rgba(13,148,136,.25);
+            color: #5eead4;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-weight: 900;
+            font-size: 12px;
+        }
+        .danger-pill{
+            background: rgba(225,29,72,.12);
+            border: 1px solid rgba(225,29,72,.25);
+            color:#fda4af;
+        }
+        .small-btn{
+            width:100%;
+            margin-top:14px;
+            padding: 14px 16px;
+            border-radius: 16px;
+            font-weight: 900;
+            transition:.25s;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.06);
+            color: #e2e8f0;
+        }
+        .small-btn:hover{ background: rgba(255,255,255,0.10); }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-6">
+    <div class="w-full max-w-md">
+        <div class="text-center mb-8">
+            <div class="text-6xl mb-4">🎧</div>
+            <h1 class="text-3xl font-black text-teal-500">مركز الدعم الفني</h1>
+            <p class="text-slate-400 mt-2 font-bold">نحن هنا لمساعدتك في أي وقت</p>
+
+            <div class="mt-4 flex items-center justify-center gap-2 flex-wrap">
+                <span class="pill">✅ دعم واتساب / اتصال / تلجرام</span>
+                <span id="payStatusPill" class="pill danger-pill" style="display:none;">⏳ الدفع متوقف حالياً</span>
+            </div>
+        </div>
+
+        <div id="supportLinks" class="space-y-4"></div>
+
+        <button onclick="history.back()" class="small-btn">
+            ← العودة للصفحة السابقة
+        </button>
+
+        <p class="muted text-center mt-4">
+            * لو عندك مشكلة “جهاز مرتبط” أو “كود غير صحيح” ابعت اسمك ورقمك + سكرين للمشكلة.
+        </p>
+    </div>
+
+    <script>
+        // ==========================
+        // ✅ تعديلات مهمة بدون تغيير الشكل العام:
+        // 1) دعم مصدرين للبيانات:
+        //    - localStorage academyDB (لو شغال Static)
+        //    - API /api/academy/public (لو شغال Next.js server)
+        // 2) Sanitization للروابط والأرقام (منع إدخال روابط ضارة).
+        // 3) عرض حالة الدفع (لو payment.active === false) وإظهار تنبيه واضح.
+        // 4) إنشاء روابط واتساب/اتصال/تلجرام بشكل آمن ومرن.
+        // ==========================
+
+        const container = document.getElementById('supportLinks');
+        const payPill = document.getElementById('payStatusPill');
+
+        function escapeHtml(s) {
+            return String(s ?? '').replace(/[&<>"']/g, m => ({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+            }[m]));
+        }
+
+        function normalizePhone(num) {
+            // يسيب أرقام فقط (وممكن يبدأ بـ +)
+            const raw = String(num ?? '').trim();
+            const plus = raw.startsWith('+') ? '+' : '';
+            const digits = raw.replace(/\D/g, '');
+            return (plus + digits).replace(/^\+00/, '+');
+        }
+
+        function isLikelyPhone(num) {
+            const n = normalizePhone(num);
+            const digits = n.replace(/\D/g,'');
+            return digits.length >= 10 && digits.length <= 15;
+        }
+
+        function safeHttpUrl(url) {
+            try {
+                const u = new URL(url);
+                if (u.protocol === 'http:' || u.protocol === 'https:') return u.toString();
+                return null;
+            } catch {
+                return null;
+            }
+        }
+
+        async function fetchPublicDB() {
+            // جرّب API الأول (لو موجود)
+            try {
+                const res = await fetch('/api/academy/public', { credentials: 'include' });
+                const data = await res.json().catch(()=> ({}));
+                if (res.ok && data?.result) return data.result;
+            } catch {}
+
+            // fallback: localStorage
+            try {
+                return JSON.parse(localStorage.getItem('academyDB')) || {};
+            } catch {
+                return {};
+            }
+        }
+
+        function renderSupport(config) {
+            let htmlContent = "";
+
+            const phones = Array.isArray(config?.phones) ? config.phones : [];
+            const teleLinks = Array.isArray(config?.teleLinks) ? config.teleLinks : [];
+
+            // 1) أرقام الهاتف/واتساب
+            const validPhones = phones
+                .map(normalizePhone)
+                .filter(isLikelyPhone);
+
+            validPhones.forEach(num => {
+                const waNum = num.replace('+',''); // wa.me لا يحبذ +
+                htmlContent += `
+                <a href="https://wa.me/${encodeURIComponent(waNum)}" target="_blank" rel="noopener" class="card">
+                    <span class="text-3xl">💬</span>
+                    <div>
+                        <h3 class="font-black text-white text-lg">واتساب الدعم</h3>
+                        <p class="text-xs text-slate-400">${escapeHtml(num)}</p>
+                    </div>
+                </a>
+                <a href="tel:${encodeURIComponent(num)}" class="card">
+                    <span class="text-3xl">📞</span>
+                    <div>
+                        <h3 class="font-black text-white text-lg">اتصال هاتفي</h3>
+                        <p class="text-xs text-slate-400">للحالات الطارئة</p>
+                    </div>
+                </a>`;
+            });
+
+            // 2) روابط تلجرام
+            const validTele = teleLinks
+                .map(s => String(s ?? '').trim())
+                .map(safeHttpUrl)
+                .filter(Boolean);
+
+            validTele.forEach(link => {
+                htmlContent += `
+                <a href="${link}" target="_blank" rel="noopener" class="card">
+                    <span class="text-3xl">✈️</span>
+                    <div>
+                        <h3 class="font-black text-white text-lg">تلجرام</h3>
+                        <p class="text-xs text-slate-400">تواصل مباشر أو انضمام للقناة</p>
+                    </div>
+                </a>`;
+            });
+
+            container.innerHTML = htmlContent;
+
+            if (container.innerHTML.trim() === "") {
+                container.innerHTML = "<p class='text-center text-slate-500 font-bold'>لا توجد وسائل تواصل مضافة حالياً.</p>";
+            }
+        }
+
+        (async function init() {
+            const db = await fetchPublicDB();
+
+            // support config
+            const config = db.support || { phones: [], teleLinks: [] };
+
+            // إظهار حالة الدفع لو متوقف (مفيد لأنك طلبت زرار يروح للدعم من صفحة الدفع)
+            if (db?.payment && db.payment.active === false) {
+                payPill.style.display = "inline-flex";
+            }
+
+            renderSupport(config);
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <title>المواد الدراسية | أكاديمية التميز</title>
+    <style>
+        :root { --accent: #0d9488; --card-dark: #111827; --bg-dark: #050a18; }
+        body { font-family: 'Cairo', sans-serif; background: var(--bg-dark); color: white; }
+
+        /* حاوية الكروت */
+        .subjects-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+            padding: 20px;
+        }
+
+        /* تصميم الكارت المطابق للصورة */
+        .subject-card {
+            background: var(--card-dark);
+            border-radius: 30px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: 0.3s transform;
+        }
+        .subject-card:hover { transform: translateY(-5px); }
+
+        /* الجزء العلوي الأبيض (للصورة) */
+        .card-top {
+            background: #ffffff; /* أبيض تماماً مثل الصورة */
+            height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .status-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #10b981;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 5px 15px;
+            border-radius: 12px;
+            z-index: 10;
+        }
+
+        .subject-img {
+            width: 80%;
+            height: 80%;
+            object-fit: contain;
+        }
+
+        /* الجزء السفلي (المعلومات) */
+        .card-bottom {
+            padding: 20px;
+            text-align: right;
+        }
+
+        .year-label {
+            color: #64748b;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .subject-title {
+            font-size: 22px;
+            font-weight: 900;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .extra-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #94a3b8;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        /* الزر الأبيض */
+        .action-btn {
+            background: white;
+            color: black;
+            width: 100%;
+            padding: 14px;
+            border-radius: 18px;
+            font-weight: 800;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: 0.2s opacity;
+        }
+        .action-btn:hover { opacity: 0.9; }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: rgba(255,255,255,0.03);
+            border: 2px dashed rgba(255,255,255,0.10);
+            border-radius: 26px;
+            color: rgba(255,255,255,0.7);
+            font-weight: 900;
+        }
+        .empty-state .muted {
+            margin-top: 10px;
+            font-size: 12px;
+            font-weight: 800;
+            color: rgba(255,255,255,0.45);
+        }
+    </style>
+</head>
+<body>
+
+    <header class="p-8 text-right">
+        <h1 class="text-3xl font-black mb-2">المواد الدراسية</h1>
+        <p class="text-slate-400">اختر المادة وابدأ رحلة التفوق</p>
+    </header>
+
+    <div id="subjectsGrid" class="subjects-container"></div>
+
+    <script>
+        // ==========================
+        // ✅ بدون تغيير الشكل:
+        // - تحميل الطالب من السيرفر (track)
+        // - تحميل الداتا من /api/academy/public
+        // - فلترة المواد حسب yearId + track
+        // - ربط الصفحات عبر nav:prevPage
+        // ==========================
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const yearId = urlParams.get('yearId');
+
+        function escapeHtml(s) {
+            return String(s ?? '').replace(/[&<>"']/g, m => ({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+            }[m]));
+        }
+
+        async function fetchJSON(url, options = {}) {
+            const res = await fetch(url, { credentials:'include', ...options });
+            const data = await res.json().catch(()=> ({}));
+            return { res, data };
+        }
+
+        async function loadStudentMe() {
+            const { res, data } = await fetchJSON('/api/student/me');
+            if (!res.ok || !data?.authenticated) {
+                location.href = '/login.html';
+                return null;
+            }
+            return data.student || null;
+        }
+
+        async function loadAcademyPublic() {
+            const { res, data } = await fetchJSON('/api/academy/public');
+            if (!res.ok || !data?.result) return { years: [], subjects: [], teachers: [], chapters: [], lectures: [] };
+            return data.result;
+        }
+
+        function resolveSubjectImage(sub) {
+            return sub.image || sub.img || sub.cover || sub.icon || 'https://via.placeholder.com/200?text=لوجو+المادة';
+        }
+
+        function allowByTrack(subject, student) {
+            // لو مفيش track في الداتا القديمة -> مسموح
+            const subjTrack = subject?.track ? String(subject.track) : "";
+            const stuTrack  = student?.track ? String(student.track) : "";
+
+            // لو الاتنين موجودين لازم يطابقوا
+            if (subjTrack && stuTrack) return subjTrack === stuTrack;
+
+            // لو واحد فيهم بس موجود، نخليها مسموح عشان التوافق للخلف
+            return true;
+        }
+
+        function goTeachers(subjectId) {
+            // حفظ الصفحة الحالية للرجوع الذكي
+            sessionStorage.setItem('nav:prevPage', location.href);
+            location.href = `teachers.html?subjectId=${encodeURIComponent(String(subjectId || ""))}`;
+        }
+
+        async function loadSubjects() {
+            const grid = document.getElementById('subjectsGrid');
+
+            if (!yearId) {
+                grid.innerHTML = `
+                    <div class="empty-state col-span-full">
+                        السنة غير محددة.
+                        <div class="muted">افتح الصفحة من اختيار السنة أولاً.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const student = await loadStudentMe();
+            if (!student) return;
+
+            const db = await loadAcademyPublic();
+
+            const year = (db.years || []).find(y => String(y.id) === String(yearId));
+            const yearLabel = year?.name ? escapeHtml(year.name) : "—";
+
+            // فلترة حسب السنة + الشعبة (track)
+            let filtered = (db.subjects || []).filter(s => String(s.yearId) === String(yearId));
+            filtered = filtered.filter(s => allowByTrack(s, student));
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state col-span-full">
+                        لا توجد مواد متاحة لهذه السنة حالياً.
+                        <div class="muted">قد تكون مواد الشعبة غير مضافة بعد أو لا تخص شعبة حسابك.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(sub => {
+                const img = resolveSubjectImage(sub);
+                const subName = escapeHtml(sub.name || "مادة بدون اسم");
+
+                return `
+                    <div class="subject-card">
+                        <div class="card-top">
+                            <div class="status-badge">متاح الآن</div>
+                            <img src="${img}" class="subject-img" alt="${subName}" loading="lazy">
+                        </div>
+
+                        <div class="card-bottom">
+                            <div class="year-label">${yearLabel}</div>
+                            <h3 class="subject-title">${subName}</h3>
+
+                            <div class="extra-info">
+                                <span>ترم أول</span>
+                                <span>📖 أونلاين</span>
+                            </div>
+
+                            <button onclick="goTeachers('${String(sub.id || "")}')" class="action-btn">
+                                عرض المدرسين
+                                <span class="text-xl">›</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.onload = loadSubjects;
+    </script>
+</body>
+</html>

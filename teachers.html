@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <title>مدرسينا | أكاديمية التميز</title>
+
+  <style>
+    :root { --accent: #0d9488; --bg-dark: #050a18; --card-bg: #111827; }
+    body { font-family: 'Cairo', sans-serif; background: var(--bg-dark); color: white; min-height: 100vh; }
+
+    /* حاوية الكروت */
+    .teachers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 30px;
+      padding: 20px;
+    }
+
+    /* كارت المدرس الكبير */
+    .teacher-card {
+      background: var(--card-bg);
+      border-radius: 35px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+
+      /* animation base */
+      opacity: 0;
+      transform: translateY(18px) scale(.985);
+    }
+    .teacher-card.show {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .teacher-card:hover {
+      transform: translateY(-10px);
+      border-color: var(--accent);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    }
+
+    /* حاوية الصورة */
+    .teacher-image-wrapper {
+      width: 100%;
+      height: 380px;
+      position: relative;
+      background: #1e293b;
+    }
+
+    .teacher-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top;
+    }
+
+    /* طبقة تظليل فوق الصورة */
+    .image-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 50%;
+      background: linear-gradient(to top, var(--card-bg), transparent);
+    }
+
+    /* تفاصيل المدرس */
+    .teacher-info {
+      padding: 25px;
+      text-align: center;
+      position: relative;
+      margin-top: -60px;
+      z-index: 10;
+    }
+
+    .teacher-name {
+      font-size: 26px;
+      font-weight: 900;
+      margin-bottom: 5px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+
+    .subject-tag {
+      background: rgba(13, 148, 136, 0.2);
+      color: var(--accent);
+      display: inline-block;
+      padding: 4px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      border: 1px solid rgba(13, 148, 136, 0.3);
+    }
+
+    /* الزر الفخم */
+    .view-lessons-btn {
+      background: white;
+      color: black;
+      width: 100%;
+      padding: 16px;
+      border-radius: 20px;
+      font-weight: 800;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      transition: 0.3s;
+    }
+
+    .view-lessons-btn:hover {
+      background: var(--accent);
+      color: white;
+    }
+
+    .back-btn {
+      background: rgba(255,255,255,0.05);
+      padding: 10px 25px;
+      border-radius: 15px;
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: 0.3s;
+    }
+    .back-btn:hover { background: var(--accent); }
+
+    /* loading skeleton */
+    .skeleton {
+      border-radius: 35px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: linear-gradient(90deg,
+        rgba(255,255,255,.04) 25%,
+        rgba(255,255,255,.10) 50%,
+        rgba(255,255,255,.04) 75%
+      );
+      background-size: 400% 100%;
+      animation: shimmer 1.15s infinite;
+      height: 520px;
+    }
+    @keyframes shimmer { 0%{background-position:100% 50%} 100%{background-position:0 50%} }
+
+    .empty {
+      text-align:center;
+      padding: 120px 20px;
+      opacity:.55;
+      border: 1px dashed rgba(255,255,255,0.10);
+      border-radius: 28px;
+    }
+  </style>
+</head>
+
+<body class="p-6">
+  <header class="max-w-7xl mx-auto mb-12 flex justify-between items-end gap-4">
+    <div class="text-right">
+      <h1 class="text-4xl font-black mb-2">مدرسينا <span class="text-teal-500">المبدعين</span></h1>
+      <p class="text-slate-400 font-bold" id="subtitle">اختر مدرسك المفضل لاستكشاف محاضراته</p>
+    </div>
+
+    <button id="btnBack" class="back-btn font-bold">← رجوع</button>
+  </header>
+
+  <div id="teachersGrid" class="teachers-grid max-w-7xl mx-auto"></div>
+
+  <script>
+    const $ = (id)=>document.getElementById(id);
+
+    function qs(name){ return new URLSearchParams(location.search).get(name); }
+
+    function escapeHtml(s){
+      return String(s ?? '').replace(/[&<>"']/g, m => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[m]));
+    }
+
+    // =============================
+    // Back logic (teachers)
+    // =============================
+    function smartBackTeachers(){
+      // 1) لو صفحة المواد خزّنت prevPage
+      const prev = sessionStorage.getItem('nav:prevPage');
+      if (prev) { location.href = prev; return; }
+
+      // 2) referrer داخلي
+      try{
+        if (document.referrer) {
+          const ref = new URL(document.referrer);
+          if (ref.origin === location.origin) { location.href = document.referrer; return; }
+        }
+      }catch{}
+
+      // 3) history
+      if (history.length > 1) { history.back(); return; }
+
+      // 4) fallback
+      location.href = '/index.html';
+    }
+
+    // =============================
+    // API
+    // =============================
+    async function fetchJSON(url, options = {}){
+      const res = await fetch(url, { credentials:'include', ...options });
+      const data = await res.json().catch(()=> ({}));
+      return {res, data};
+    }
+
+    async function loadStudentMe(){
+      const {res, data} = await fetchJSON('/api/student/me');
+      if (!res.ok || !data?.authenticated){
+        location.href = '/login.html';
+        return null;
+      }
+      return data.student || null;
+    }
+
+    async function loadAcademyPublic(){
+      const {res, data} = await fetchJSON('/api/academy/public');
+      if (!res.ok || !data?.result) return { years:[], subjects:[], teachers:[], chapters:[], lectures:[] };
+      return data.result;
+    }
+
+    // =============================
+    // UI helpers
+    // =============================
+    function renderSkeleton(){
+      const grid = $('teachersGrid');
+      grid.innerHTML = '';
+      for(let i=0;i<6;i++){
+        const d=document.createElement('div');
+        d.className='skeleton';
+        grid.appendChild(d);
+      }
+    }
+
+    function animateCards(){
+      const cards = [...document.querySelectorAll('.teacher-card')];
+      cards.forEach((c,i)=> setTimeout(()=> c.classList.add('show'), i*90));
+    }
+
+    function teacherImage(src){
+      // fallback صورة افتراضية شيك
+      const fallback = "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=900&q=60";
+      return src && String(src).trim() ? String(src) : fallback;
+    }
+
+    // =============================
+    // Track (شُعبة) filter
+    // =============================
+    function allowTeacherByTrack(teacher, student){
+      const tTrack = teacher?.track ? String(teacher.track) : "";
+      const sTrack = student?.track ? String(student.track) : "";
+
+      // لو الاتنين موجودين: لازم يطابقوا
+      if (tTrack && sTrack) return tTrack === sTrack;
+
+      // توافق للخلف (لو واحد بس موجود)
+      return true;
+    }
+
+    // =============================
+    // Navigation
+    // =============================
+    function goToCourses(teacherId){
+      // ✅ نخزّن الصفحة الحالية كـ prevPage قبل ما نروح للكورسات
+      sessionStorage.setItem('nav:prevPage', location.href);
+
+      const id = encodeURIComponent(teacherId || '');
+      location.href = `/courses.html?teacherId=${id}`;
+    }
+    window.goToCourses = goToCourses;
+
+    // =============================
+    // Render
+    // =============================
+    async function renderTeachers(){
+      renderSkeleton();
+
+      const subjectId = qs('subjectId');
+      if (!subjectId){
+        $('teachersGrid').innerHTML = `
+          <div class="empty col-span-full">
+            <div class="text-6xl mb-4">⚠️</div>
+            <h3 class="text-2xl font-bold">المادة غير محددة</h3>
+            <p class="text-slate-400 font-bold mt-2">ارجع واختر مادة أولاً.</p>
+          </div>`;
+        return;
+      }
+
+      const st = await loadStudentMe();
+      if (!st) return;
+
+      const db = await loadAcademyPublic();
+
+      const subject = (db.subjects || []).find(s => String(s.id) === String(subjectId));
+      if (subject?.name){
+        $('subtitle').innerText = `مدرسو مادة: ${subject.name}`;
+      }
+
+      // ✅ فلترة المدرسين حسب المادة + الشعبة
+      let filtered = (db.teachers || []).filter(t => String(t.subId) === String(subjectId));
+      filtered = filtered.filter(t => allowTeacherByTrack(t, st));
+
+      if (!filtered.length){
+        $('teachersGrid').innerHTML = `
+          <div class="empty col-span-full">
+            <div class="text-6xl mb-4">👨‍🏫</div>
+            <h3 class="text-2xl font-bold">لا يوجد مدرسون مضافون لهذه المادة حالياً</h3>
+            <p class="text-slate-400 font-bold mt-2">قد تكون شعبة الحساب مختلفة عن المدرسين المتاحين لهذه المادة.</p>
+          </div>`;
+        return;
+      }
+
+      const grid = $('teachersGrid');
+      grid.innerHTML = filtered.map(teacher => `
+        <div class="teacher-card">
+          <div class="teacher-image-wrapper">
+            <img
+              src="${escapeHtml(teacherImage(teacher.pic || teacher.image || teacher.photo))}"
+              class="teacher-img"
+              alt="${escapeHtml(teacher.name || 'Teacher')}"
+              loading="lazy"
+              onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=900&q=60';"
+            >
+            <div class="image-overlay"></div>
+          </div>
+
+          <div class="teacher-info">
+            <h3 class="teacher-name">${escapeHtml(teacher.name || 'مدرس')}</h3>
+            <div class="subject-tag">${escapeHtml(subject?.name || 'مدرس المادة')}</div>
+
+            <button onclick="goToCourses('${String(teacher.id)}')" class="view-lessons-btn">
+              عرض المحاضرات
+              <span class="text-2xl">›</span>
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      requestAnimationFrame(animateCards);
+    }
+
+    // =============================
+    // Boot
+    // =============================
+    document.addEventListener('DOMContentLoaded', () => {
+      $('btnBack').addEventListener('click', smartBackTeachers);
+      renderTeachers();
+    });
+  </script>
+</body>
+</html>

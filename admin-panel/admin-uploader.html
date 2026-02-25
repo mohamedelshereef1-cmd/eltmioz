@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم | الإدارة الكاملة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --accent-blue: #38bdf8;
+            --accent-green: #10b981;
+            --accent-purple: #a855f7;
+            --text-main: #f1f5f9;
+            --text-dim: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Cairo', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            min-height: 100vh;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            padding: 40px;
+            width: 100%;
+            max-width: 950px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+        }
+
+        h2 {
+            text-align: right;
+            margin-bottom: 30px;
+            font-weight: 700;
+            color: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-dim);
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 14px;
+            background: #0f172a;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: white;
+            font-size: 15px;
+            outline: none;
+            box-sizing: border-box;
+            font-family: 'Cairo';
+        }
+
+        .btn-add, .btn-activate, .btn-unlock {
+            background-color: var(--accent-blue);
+            color: var(--bg-dark);
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-purple { background-color: var(--accent-purple); color: white; }
+        .btn-activate { background-color: var(--accent-green); color: white; padding: 8px 15px; font-size: 13px; }
+        .btn-danger { background-color: var(--danger); color: white; padding: 5px 10px; font-size: 12px; border: none; border-radius: 8px; cursor: pointer; }
+        .btn-unlock { background-color: var(--warning); color: white; padding: 8px 15px; font-size: 13px; }
+
+        .btn-add:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(56, 189, 248, 0.2); }
+
+        .management-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: flex-end;
+        }
+
+        .year-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(168, 85, 247, 0.2);
+            color: var(--accent-purple);
+            padding: 5px 15px;
+            border-radius: 10px;
+            border: 1px solid var(--accent-purple);
+            margin: 5px;
+        }
+
+        .student-table-container { overflow-x: auto; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; text-align: right; }
+        th { background: rgba(56, 189, 248, 0.1); color: var(--accent-blue); padding: 15px; }
+        td { padding: 15px; border-bottom: 1px solid var(--border); }
+
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .status-expired { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .status-active { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+
+        .code-display {
+            font-family: monospace;
+            background: rgba(255,255,255,0.05);
+            padding: 4px 8px;
+            border-radius: 6px;
+            color: var(--accent-blue);
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .btn-copy {
+            background: none;
+            border: 1px solid var(--accent-blue);
+            color: var(--accent-blue);
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        .btn-copy:hover { background: var(--accent-blue); color: var(--bg-dark); }
+
+        .upload-zone {
+            border: 2px dashed var(--accent-blue);
+            padding: 30px;
+            text-align: center;
+            border-radius: 20px;
+            cursor: pointer;
+            background: rgba(56, 189, 248, 0.05);
+            transition: 0.3s;
+            margin-bottom: 15px;
+        }
+        .upload-zone:hover { background: rgba(56, 189, 248, 0.1); }
+        .hidden { display: none; }
+
+        /* شريط التحميل الجديد */
+        #progressContainer {
+            width: 100%;
+            background: rgba(255,255,255,0.1);
+            height: 10px;
+            border-radius: 5px;
+            margin-top: 15px;
+            display: none;
+        }
+        #progressBar {
+            width: 0%;
+            background: var(--accent-green);
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.3s;
+        }
+
+        .delete-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.05);
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border-right: 4px solid var(--danger);
+        }
+    </style>
+</head>
+<body>
+
+<div class="glass-card">
+    <h2 style="color: var(--accent-purple);">📅 إدارة السنوات الدراسية</h2>
+    <div class="management-row">
+        <div style="flex: 1;">
+            <label>إضافة سنة جديدة</label>
+            <input type="text" id="newYearInput" placeholder="مثال: الصف الثالث الثانوي">
+        </div>
+        <button class="btn-add btn-purple" onclick="addItem('years', 'newYearInput')">إضافة السنة +</button>
+    </div>
+    <div id="yearsList"></div>
+</div>
+
+<div class="glass-card">
+    <h2>🎓 إدارة الطلاب وتفعيل الاشتراكات</h2>
+    <div class="management-row">
+        <input type="text" id="studentSearch" placeholder="بحث باسم الطالب أو الهاتف..." oninput="renderStudents()">
+    </div>
+
+    <div class="student-table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>الاسم</th>
+                    <th>الكود</th> 
+                    <th>الهاتف</th>
+                    <th>السنة</th>
+                    <th>الحالة</th>
+                    <th>تفعيل / فك الجهاز</th>
+                    <th>حذف</th>
+                </tr>
+            </thead>
+            <tbody id="studentTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="glass-card">
+    <h2>🎬 رفع محاضرة جديدة (نظام ذكي)</h2>
+    
+    <div class="grid-layout">
+        <div>
+            <label>السنة الدراسية</label>
+            <select id="lecYearSelect" onchange="filterList('subjects', 'yearId', this.value, 'lecSubSelect')"></select>
+        </div>
+        <div>
+            <label>المادة العلمية</label>
+            <select id="lecSubSelect" onchange="filterList('teachers', 'subId', this.value, 'lecTeachSelect')"></select>
+        </div>
+    </div>
+
+    <div class="grid-layout">
+        <div>
+            <label>المدرس</label>
+            <select id="lecTeachSelect" onchange="filterList('chapters', 'teachId', this.value, 'lecChapterSelect')"></select>
+        </div>
+        <div>
+            <label>الفصل / الوحدة</label>
+            <select id="lecChapterSelect"></select>
+        </div>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+        <label>عنوان المحاضرة</label>
+        <input type="text" id="lecTitle" placeholder="مثال: شرح قانون كيرشوف الأول">
+    </div>
+
+    <div class="upload-zone" onclick="document.getElementById('videoFile').click()">
+        <div id="uploadText">📤 اضغط لاختيار فيديو المحاضرة (الرفع سحابي مباشر)</div>
+        <div id="fileNameDisplay" class="hidden" style="color: var(--accent-blue); font-weight: bold;"></div>
+        <input type="file" id="videoFile" class="hidden" accept="video/*" onchange="handleFile(this)">
+        
+        <div id="progressContainer">
+            <div id="progressBar"></div>
+        </div>
+        <div id="progressText" style="font-size: 12px; margin-top: 5px; color: var(--accent-green);"></div>
+    </div>
+
+    <button id="uploadBtn" class="btn-add" style="width: 100%;" onclick="addLecture()">نشر المحاضرة الآن 🚀</button>
+</div>
+
+<div class="glass-card">
+    <h2 style="color: var(--danger);">🗑️ إدارة وحذف المحاضرات</h2>
+    <div class="grid-layout">
+        <div>
+            <label>السنة الدراسية</label>
+            <select id="delYearSelect" onchange="filterList('subjects', 'yearId', this.value, 'delSubSelect')"></select>
+        </div>
+        <div>
+            <label>المادة العلمية</label>
+            <select id="delSubSelect" onchange="filterList('teachers', 'subId', this.value, 'delTeachSelect')"></select>
+        </div>
+    </div>
+
+    <div class="grid-layout">
+        <div>
+            <label>المدرس</label>
+            <select id="delTeachSelect" onchange="filterList('chapters', 'teachId', this.value, 'delChapterSelect')"></select>
+        </div>
+        <div>
+            <label>الفصل / الوحدة</label>
+            <select id="delChapterSelect" onchange="renderLecturesToDelete(this.value)"></select>
+        </div>
+    </div>
+
+    <div id="lecturesDeleteList" style="margin-top: 20px;">
+        <p style="text-align: center; color: var(--text-dim);">يرجى اختيار الفصل الدراسي لعرض الفيديوهات...</p>
+    </div>
+</div>
+
+<script>
+    // --- [إعدادات الاتصال بالسيرفرات] ---
+    const KV_REST_API_URL = "اكتب_رابط_VERCEL_KV_هنا";
+    const KV_REST_API_TOKEN = "اكتب_توكن_VERCEL_KV_هنا";
+    
+    const CLOUD_NAME = "اكتب_CLOUD_NAME_هنا";
+    const UPLOAD_PRESET = "اكتب_UPLOAD_PRESET_هنا";
+
+    let db = {
+        years: [], subjects: [], teachers: [], chapters: [], lectures: [], users: [], prices: { month: 0, year: 0 }, monthlyIncome: 0
+    };
+
+    // --- [دوال قاعدة البيانات Vercel KV] ---
+
+    async function loadDatabase() {
+        try {
+            const response = await fetch(`${KV_REST_API_URL}/get/academyDB`, {
+                headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}` }
+            });
+            const data = await response.json();
+            if (data.result) {
+                db = JSON.parse(data.result);
+            }
+            refreshUI();
+        } catch (e) {
+            console.error("فشل تحميل قاعدة البيانات من Vercel", e);
+        }
+    }
+
+    async function sync() {
+        try {
+            await fetch(`${KV_REST_API_URL}/set/academyDB`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}` },
+                body: JSON.stringify(JSON.stringify(db))
+            });
+            refreshUI();
+        } catch (e) {
+            alert("فشل مزامنة البيانات مع السيرفر!");
+        }
+    }
+
+    // --- [نظام الحماية وبصمة الجهاز] ---
+
+    function getDeviceFingerprint() {
+        let fingerprint = localStorage.getItem('admin_device_id');
+        if (!fingerprint) {
+            fingerprint = 'device-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('admin_device_id', fingerprint);
+        }
+        return fingerprint;
+    }
+
+    async function checkAuth() {
+        const masterKey = "ADMIN124"; 
+        const authStatus = sessionStorage.getItem('adminAuthenticated');
+        
+        if (authStatus !== 'true') {
+            const pass = prompt("منطقة محظورة! أدخل كود الإدارة للدخول:");
+            if (pass === masterKey) {
+                sessionStorage.setItem('adminAuthenticated', 'true');
+            } else {
+                const adminUser = db.users.find(u => u.code === pass);
+                const currentDevice = getDeviceFingerprint();
+                if (adminUser) {
+                    if (!adminUser.deviceId) {
+                        adminUser.deviceId = currentDevice;
+                        await sync();
+                        sessionStorage.setItem('adminAuthenticated', 'true');
+                        alert("تم ربط الكود بهذا الجهاز.");
+                    } else if (adminUser.deviceId === currentDevice) {
+                        sessionStorage.setItem('adminAuthenticated', 'true');
+                    } else {
+                        alert("الكود مفعل على جهاز آخر!");
+                        window.location.href = 'index.html';
+                    }
+                } else {
+                    alert("كود خاطئ!");
+                    window.location.href = 'index.html';
+                }
+            }
+        }
+    }
+
+    // --- [دوال الإدارة] ---
+
+    function addItem(type, inputId) {
+        const val = document.getElementById(inputId).value.trim();
+        if(!val) return;
+        db[type].push({ id: Date.now().toString(), name: val });
+        document.getElementById(inputId).value = '';
+        sync();
+    }
+
+    function deleteItem(type, id) {
+        if(confirm("هل تريد الحذف؟")) {
+            db[type] = db[type].filter(item => item.id != id);
+            sync();
+        }
+    }
+
+    function renderStudents() {
+        const query = document.getElementById('studentSearch').value.toLowerCase();
+        const tbody = document.getElementById('studentTableBody');
+        tbody.innerHTML = '';
+
+        db.users.filter(s => 
+            (s.name && s.name.toLowerCase().includes(query)) || 
+            (s.phone && s.phone.includes(query)) || 
+            (s.code && s.code.toLowerCase().includes(query))
+        ).forEach(s => {
+            const isExp = s.expiryDate ? new Date(s.expiryDate) < new Date() : true;
+            const yearName = db.years.find(y => y.id == s.yearId)?.name || "غير محدد";
+            tbody.innerHTML += `
+                <tr>
+                    <td>${s.name}</td>
+                    <td><span class="code-display">${s.code}</span> <button class="btn-copy" onclick="copyCode('${s.code}')">نسخ</button></td>
+                    <td>${s.phone}</td>
+                    <td>${yearName}</td>
+                    <td><span class="status-badge ${isExp ? 'status-expired' : 'status-active'}">${isExp ? 'منتهي' : 'نشط'}</span></td>
+                    <td>
+                        <button class="btn-activate" onclick="activateSub('${s.id}', 'month')">شهر</button>
+                        <button class="btn-unlock" onclick="unlockDevice('${s.id}')">🔓 فك</button>
+                    </td>
+                    <td><button class="btn-danger" onclick="deleteStudent('${s.id}')">حذف</button></td>
+                </tr>
+            `;
+        });
+    }
+
+    function activateSub(studentId, type) {
+        const student = db.users.find(u => u.id === studentId);
+        if(!student) return;
+        let baseDate = (student.expiryDate && new Date(student.expiryDate) > new Date()) ? new Date(student.expiryDate) : new Date();
+        baseDate.setDate(baseDate.getDate() + (type === 'month' ? 30 : 365));
+        student.expiryDate = baseDate.toISOString();
+        sync();
+    }
+
+    function unlockDevice(id) {
+        const s = db.users.find(u => u.id === id);
+        if(s) { s.deviceId = null; sync(); alert("تم فك الجهاز"); }
+    }
+
+    function deleteStudent(id) {
+        if(confirm("حذف؟")) { db.users = db.users.filter(u => u.id !== id); sync(); }
+    }
+
+    function filterList(dbType, filterKey, filterVal, targetSelectId) {
+        const target = document.getElementById(targetSelectId);
+        const filtered = db[dbType].filter(item => item[filterKey] == filterVal);
+        target.innerHTML = '<option value="">اختر...</option>' + filtered.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
+    }
+
+    // --- [نظام الرفع الذكي Cloudinary] ---
+
+    let selectedFile = null;
+    function handleFile(input) {
+        if(input.files[0]) {
+            selectedFile = input.files[0];
+            document.getElementById('uploadText').classList.add('hidden');
+            document.getElementById('fileNameDisplay').classList.remove('hidden');
+            document.getElementById('fileNameDisplay').innerText = "📄 جاهز للرفع: " + selectedFile.name;
+        }
+    }
+
+    async function addLecture() {
+        const chapId = document.getElementById('lecChapterSelect').value;
+        const title = document.getElementById('lecTitle').value;
+        if(!chapId || !title || !selectedFile) return alert("اكمل البيانات واختبر الملف");
+
+        const btn = document.getElementById('uploadBtn');
+        const progContainer = document.getElementById('progressContainer');
+        const progBar = document.getElementById('progressBar');
+        const progText = document.getElementById('progressText');
+
+        btn.disabled = true;
+        progContainer.style.display = 'block';
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('upload_preset', UPLOAD_PRESET);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, true);
+
+        xhr.upload.onprogress = (e) => {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            progBar.style.width = percent + '%';
+            progText.innerText = `جاري الرفع للسيرفر السحابي: ${percent}%`;
+        };
+
+        xhr.onload = async () => {
+            const data = JSON.parse(xhr.responseText);
+            if(data.public_id) {
+                // حفظ الـ ID فقط في Vercel KV
+                db.lectures.push({ 
+                    id: Date.now().toString(), 
+                    title: title, 
+                    chapId: chapId, 
+                    videoId: data.public_id // استدعاء الطالب سيكون بهذا الـ ID
+                });
+                await sync();
+                alert("🚀 تم النشر بنجاح!");
+                location.reload();
+            } else {
+                alert("خطأ في الرفع: " + data.error.message);
+                btn.disabled = false;
+            }
+        };
+
+        xhr.send(formData);
+    }
+
+    function renderLecturesToDelete(chapterId) {
+        const listContainer = document.getElementById('lecturesDeleteList');
+        const filteredLecs = db.lectures.filter(l => l.chapId == chapterId);
+        listContainer.innerHTML = filteredLecs.map(lec => `
+            <div class="delete-list-item">
+                <div>
+                    <div style="font-weight: bold; color: white;">${lec.title}</div>
+                    <div style="font-size: 11px; color: var(--accent-blue);">ID: ${lec.videoId}</div>
+                </div>
+                <button class="btn-danger" onclick="deleteLectureItem('${lec.id}')">حذف نهائي 🗑️</button>
+            </div>
+        `).join('');
+    }
+
+    function deleteLectureItem(id) {
+        if(confirm("حذف الفيديو؟")) {
+            db.lectures = db.lectures.filter(l => l.id !== id);
+            sync();
+            renderLecturesToDelete(document.getElementById('delChapterSelect').value);
+        }
+    }
+
+    function refreshUI() {
+        document.getElementById('yearsList').innerHTML = db.years.map(y => `
+            <span class="year-tag">${y.name} <span onclick="deleteItem('years', '${y.id}')" style="cursor:pointer; color:var(--danger)">×</span></span>
+        `).join('');
+
+        ['lecYearSelect', 'delYearSelect'].forEach(id => {
+            const select = document.getElementById(id);
+            const val = select.value;
+            select.innerHTML = '<option value="">اختر السنة</option>' + db.years.map(y => `<option value="${y.id}">${y.name}</option>`).join('');
+            select.value = val;
+        });
+        renderStudents();
+    }
+
+    window.onload = async () => {
+        await loadDatabase();
+        await checkAuth();
+    };
+
+    function copyCode(c) { navigator.clipboard.writeText(c); alert("تم النسخ"); }
+</script>
+
+</body>
+</html>

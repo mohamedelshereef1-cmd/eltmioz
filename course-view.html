@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>المحاضرات | منصة التميز</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#020617;
+      --card: rgba(255,255,255,0.05);
+      --bd: rgba(255,255,255,0.10);
+      --accent:#0d9488;
+      --muted: rgba(255,255,255,0.65);
+    }
+    body{ font-family:'Cairo',sans-serif; background:var(--bg); color:#fff; overflow-x:hidden; }
+
+    .topbar{
+      position:sticky; top:0; z-index:50;
+      background: rgba(2,6,23,0.75);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--bd);
+    }
+
+    .card{
+      background: var(--card);
+      border: 1px solid var(--bd);
+      border-radius: 22px;
+      overflow:hidden;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.25);
+    }
+
+    .chip{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:7px 10px; border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+      font-size: 12px; font-weight: 900;
+      white-space: nowrap;
+    }
+    .chip b{ color: #2dd4bf; }
+
+    .search{
+      display:flex; align-items:center; gap:10px;
+      padding: 10px 12px; border-radius: 16px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+    .search input{
+      width:100%; background:transparent; outline:none;
+      color:#fff; font-weight:900;
+    }
+    .search input::placeholder{ color: rgba(255,255,255,0.45); }
+
+    .select{
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 16px;
+      padding: 10px 12px;
+      font-weight: 900;
+      outline:none;
+      color:#fff;
+    }
+    .select option{ color:#000; }
+
+    .lesson-card{
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 22px;
+      padding: 16px;
+      position:relative;
+      overflow:hidden;
+      transition:.25s;
+      opacity:0;
+      transform: translateY(24px) scale(.98);
+    }
+    .lesson-card.show{
+      opacity:1;
+      transform: translateY(0) scale(1);
+    }
+    .lesson-card::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background: radial-gradient(circle at 18% 0%, rgba(13,148,136,.20), transparent 45%);
+      pointer-events:none;
+    }
+    .lesson-card:hover{
+      transform: translateY(-6px) scale(1.01);
+      border-color: rgba(13,148,136,.45);
+      box-shadow: 0 16px 44px rgba(13,148,136,.18);
+    }
+
+    .badge-num{
+      width:44px; height:44px; border-radius: 16px;
+      background: rgba(13,148,136,.14);
+      border: 1px solid rgba(13,148,136,.22);
+      display:flex; align-items:center; justify-content:center;
+      font-weight: 900;
+      color:#2dd4bf;
+      flex:0 0 auto;
+    }
+
+    .btn{
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-weight: 900;
+      font-size: 12px;
+      cursor:pointer;
+      transition:.18s;
+      user-select:none;
+      display:inline-flex; align-items:center; gap:8px;
+    }
+    .btn:hover{ transform: translateY(-1px); border-color: rgba(13,148,136,0.55); }
+    .btn.accent{ background: rgba(13,148,136,0.18); border-color: rgba(13,148,136,0.25); }
+
+    .skeleton{
+      height: 130px;
+      border-radius: 22px;
+      background: linear-gradient(
+        90deg,
+        rgba(255,255,255,.04) 25%,
+        rgba(255,255,255,.10) 50%,
+        rgba(255,255,255,.04) 75%
+      );
+      background-size: 400% 100%;
+      animation: shimmer 1.2s infinite;
+      border:1px solid rgba(255,255,255,0.08);
+    }
+    @keyframes shimmer{
+      0%{ background-position: 100% 50%; }
+      100%{ background-position: 0 50%; }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <button class="btn" id="btnBackPage">⬅️ رجوع</button>
+        <a href="/index.html" class="btn">🏠 الرئيسية</a>
+
+        <div class="min-w-0">
+          <div class="text-xs font-black text-teal-400">محاضرات المدرس</div>
+          <div id="pageTitle" class="font-black text-white text-base truncate">جاري التحميل...</div>
+        </div>
+      </div>
+
+      <div class="btn" id="studentNameDisplay">أهلاً، —</div>
+    </div>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <div class="card p-4 md:p-6">
+      <!-- Header -->
+      <div class="flex items-start justify-between flex-wrap gap-3">
+        <div class="min-w-0">
+          <h1 class="text-2xl md:text-3xl font-black text-teal-400 truncate" id="courseTitle">—</h1>
+          <p class="text-sm font-bold mt-2" style="color:var(--muted);" id="courseDescription"></p>
+          <div id="chips" class="mt-4 flex flex-wrap gap-2"></div>
+        </div>
+
+        <div class="chip" id="countPill">—</div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="search" title="ابحث عن محاضرة">
+          <span style="opacity:.85">🔎</span>
+          <input id="searchInput" type="text" placeholder="اكتب جزء من عنوان المحاضرة..." />
+        </div>
+
+        <select id="chapterFilter" class="select" title="فلترة حسب الفصل">
+          <option value="">كل الفصول</option>
+        </select>
+
+        <select id="sortSelect" class="select" title="الترتيب">
+          <option value="order">ترتيب المحاضرات</option>
+          <option value="title">بالاسم</option>
+          <option value="newest">الأحدث</option>
+        </select>
+      </div>
+
+      <div class="text-xs font-bold mt-4" style="color:var(--muted);" id="hintLine">
+        💡 ابحث بالعنوان، وفلتر حسب الفصل، وغير الترتيب من القائمة.
+      </div>
+    </div>
+
+    <!-- Lessons -->
+    <div id="lessonsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5"></div>
+  </main>
+
+  <script>
+    // =============================
+    // Helpers
+    // =============================
+    const $ = (id)=>document.getElementById(id);
+
+    function escapeHtml(s){
+      return String(s ?? '').replace(/[&<>"']/g, m => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[m]));
+    }
+
+    function escapeJs(s){
+      return String(s ?? '')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r");
+    }
+
+    function qs(name){
+      return new URLSearchParams(location.search).get(name);
+    }
+
+    function setCount(n,total){
+      $('countPill').innerText = `المعروض: ${n} / ${total}`;
+    }
+
+    function fillChips(subjectName, yearName, total){
+      const parts=[];
+      if(subjectName) parts.push(`<span class="chip">📚 المادة: <b>${escapeHtml(subjectName)}</b></span>`);
+      if(yearName) parts.push(`<span class="chip">🗓️ السنة: <b>${escapeHtml(yearName)}</b></span>`);
+      parts.push(`<span class="chip">🎬 المحاضرات: <b>${escapeHtml(String(total))}</b></span>`);
+      $('chips').innerHTML = parts.join('');
+    }
+
+    // =============================
+    // Smart Back (Courses)
+    // =============================
+    function smartBackPage(){
+      // 1) أفضل: prevPage تم تخزينه من teachers/subjects قبل فتح هذه الصفحة
+      const prev = sessionStorage.getItem('nav:prevPage');
+      if (prev) { location.href = prev; return; }
+
+      // 2) referrer من نفس الدومين
+      try{
+        if (document.referrer) {
+          const ref = new URL(document.referrer);
+          if (ref.origin === location.origin) { location.href = document.referrer; return; }
+        }
+      }catch{}
+
+      // 3) history
+      if (history.length > 1) { history.back(); return; }
+
+      // 4) fallback
+      location.href = '/index.html';
+    }
+
+    // ✅ أهم جزء: حفظ صفحة الكورسات قبل الذهاب للبلاير
+    function viewLesson(lessonId, title){
+      sessionStorage.setItem('nav:lastPage', location.href);
+      const id = encodeURIComponent(lessonId || '');
+      const t  = encodeURIComponent(title || '');
+      window.location.href = `/player.html?lessonId=${id}&title=${t}`;
+    }
+
+    // =============================
+    // Server calls
+    // =============================
+    async function fetchJSON(url, options={}){
+      const res = await fetch(url, { credentials:'include', ...options });
+      const data = await res.json().catch(()=>({}));
+      return {res, data};
+    }
+
+    async function loadStudentMe(){
+      const {res, data} = await fetchJSON('/api/student/me');
+      if(!res.ok || !data?.authenticated){
+        location.href = '/login.html';
+        return null;
+      }
+      return data.student;
+    }
+
+    async function loadAcademyPublic(){
+      const {res, data} = await fetchJSON('/api/academy/public');
+      if(!res.ok || !data?.result) return { years:[], subjects:[], teachers:[], chapters:[], lectures:[] };
+      return data.result;
+    }
+
+    // =============================
+    // Render
+    // =============================
+    let ALL_LESSONS=[], CHAPTERS=[], CHAP_NAME_BY_ID=new Map();
+
+    function getLessonSortVal(lesson){
+      const o = Number(lesson.order ?? lesson.lesson_order ?? 0);
+      return o || 0;
+    }
+
+    function sortLessons(list, mode){
+      const arr=[...list];
+      if(mode==='title'){
+        arr.sort((a,b)=>String(a.title||'').localeCompare(String(b.title||''),'ar'));
+      }else if(mode==='newest'){
+        arr.sort((a,b)=>{
+          const da = Number(a.createdAt || a.updatedAt || a.id || 0);
+          const db = Number(b.createdAt || b.updatedAt || b.id || 0);
+          return db - da;
+        });
+      }else{
+        arr.sort((a,b)=>{
+          const oa=getLessonSortVal(a), ob=getLessonSortVal(b);
+          if(oa && ob) return oa - ob;
+          return String(a.id||'').localeCompare(String(b.id||''));
+        });
+      }
+      return arr;
+    }
+
+    function fillChapterFilter(chapters){
+      $('chapterFilter').innerHTML =
+        `<option value="">كل الفصول</option>` +
+        chapters.map(c=>`<option value="${escapeHtml(String(c.id))}">${escapeHtml(c.name||'')}</option>`).join('');
+    }
+
+    function animateCards(){
+      const cards=[...document.querySelectorAll('.lesson-card')];
+      cards.forEach((c,i)=> setTimeout(()=> c.classList.add('show'), i*90));
+    }
+
+    function renderLessons(){
+      const q = ($('searchInput').value || '').trim().toLowerCase();
+      const chap = $('chapterFilter').value;
+      const sortMode = $('sortSelect').value;
+
+      let list=[...ALL_LESSONS];
+      if(chap) list = list.filter(l=>String(l.chapId)===String(chap));
+      if(q) list = list.filter(l=>String(l.title||'').toLowerCase().includes(q));
+
+      list = sortLessons(list, sortMode);
+
+      setCount(list.length, ALL_LESSONS.length);
+
+      const container=$('lessonsList');
+      container.innerHTML='';
+
+      if(!list.length){
+        container.innerHTML = `
+          <div class="card p-8 text-center col-span-full" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size:46px;">🫥</div>
+            <div class="font-black mt-2">لا توجد نتائج مطابقة.</div>
+            <div class="text-sm font-bold mt-1" style="color:var(--muted);">جرّب تغيّر البحث أو الفلتر.</div>
+          </div>`;
+        return;
+      }
+
+      list.forEach((lesson, idx)=>{
+        const title = lesson.title || 'محاضرة بدون عنوان';
+        const lessonId = lesson.id ?? lesson.lessonId ?? lesson.lectureId ?? '';
+        const chapterName = CHAP_NAME_BY_ID.get(String(lesson.chapId)) || '';
+        const orderVal = getLessonSortVal(lesson);
+
+        const card=document.createElement('div');
+        card.className='lesson-card';
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-3 relative z-10">
+            <div class="badge-num">${escapeHtml(String(orderVal || (idx+1)))}</div>
+            <div class="text-[10px] font-black text-teal-300 bg-teal-500/10 border border-teal-500/10 px-2 py-1 rounded-xl">LESSON</div>
+          </div>
+
+          <div class="relative z-10 mt-4">
+            <div class="font-black text-lg leading-snug">${escapeHtml(title)}</div>
+            <div class="mt-2 flex flex-wrap gap-2">
+              ${chapterName ? `<span class="chip">📁 الفصل: <b>${escapeHtml(chapterName)}</b></span>` : ``}
+              <span class="chip">🔐 <b>داخل المنصة</b></span>
+            </div>
+
+            <button class="btn accent w-full mt-4"
+              onclick="viewLesson('${escapeJs(String(lessonId))}','${escapeJs(title)}')">
+              ▶️ مشاهدة
+            </button>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+
+      requestAnimationFrame(animateCards);
+    }
+
+    function renderSkeleton(){
+      const container=$('lessonsList');
+      container.innerHTML='';
+      for(let i=0;i<9;i++){
+        const d=document.createElement('div');
+        d.className='skeleton';
+        container.appendChild(d);
+      }
+    }
+
+    // ✅ Track gate (بدون تغيير UI)
+    function denyAccessCard(){
+      $('pageTitle').innerText = 'غير مصرح';
+      $('courseTitle').innerText = 'غير مصرح لك بالدخول';
+      $('courseDescription').innerText = 'هذه المحاضرات تخص شعبة مختلفة عن شعبة حسابك.';
+      fillChips('', '', 0);
+      setCount(0,0);
+      $('lessonsList').innerHTML = `
+        <div class="card p-8 text-center col-span-full" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+          <div style="font-size:46px;">⛔</div>
+          <div class="font-black mt-2">غير مصرح</div>
+          <div class="text-sm font-bold mt-1" style="color:var(--muted);">
+            لو ده خطأ، تواصل مع الدعم لتعديل الشعبة.
+          </div>
+        </div>`;
+    }
+
+    function buildTeacherPage(db, teacherId, student){
+      const teacher = (db.teachers||[]).find(t=>String(t.id)===String(teacherId));
+      if(!teacher){
+        $('pageTitle').innerText = 'خطأ';
+        $('courseTitle').innerText = 'مدرس غير موجود';
+        $('courseDescription').innerText = '';
+        fillChips('', '', 0);
+        setCount(0,0);
+        $('lessonsList').innerHTML = `<div class="card p-8 text-center col-span-full">المدرس غير محدد أو غير موجود.</div>`;
+        return;
+      }
+
+      const subject = (db.subjects||[]).find(s=>String(s.id)===String(teacher.subId));
+      const year = subject ? (db.years||[]).find(y=>String(y.id)===String(subject.yearId)) : null;
+
+      // ✅ حماية الشعبة: لو عندنا track في المادة والطالب عنده track، لازم يتطابقوا
+      const subjTrack = subject?.track ? String(subject.track) : "";
+      const stuTrack  = student?.track ? String(student.track) : "";
+
+      if (subjTrack && stuTrack && subjTrack !== stuTrack) {
+        denyAccessCard();
+        return;
+      }
+
+      $('pageTitle').innerText = `محاضرات ${teacher.name || ''}`;
+      $('courseTitle').innerText = teacher.name || 'محاضرات المدرس';
+
+      const descParts=[];
+      if(subject?.name) descParts.push(`المادة: ${subject.name}`);
+      if(year?.name) descParts.push(`السنة: ${year.name}`);
+      $('courseDescription').innerText = descParts.join(' — ');
+
+      CHAPTERS = (db.chapters||[]).filter(c=>String(c.teachId)===String(teacherId));
+      CHAP_NAME_BY_ID = new Map(CHAPTERS.map(c=>[String(c.id), c.name||'']));
+
+      const chapIds=new Set(CHAPTERS.map(c=>String(c.id)));
+      ALL_LESSONS = (db.lectures||[]).filter(l=>chapIds.has(String(l.chapId)));
+
+      fillChips(subject?.name || '', year?.name || '', ALL_LESSONS.length);
+      fillChapterFilter(CHAPTERS);
+
+      if(!ALL_LESSONS.length){
+        $('lessonsList').innerHTML = `
+          <div class="card p-8 text-center col-span-full" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size:46px;">📭</div>
+            <div class="font-black mt-2">لا توجد محاضرات متاحة لهذا المدرس حالياً.</div>
+            <div class="text-sm font-bold mt-1" style="color:var(--muted);">جرّب لاحقاً أو تواصل مع الدعم.</div>
+          </div>`;
+        setCount(0,0);
+        return;
+      }
+
+      renderLessons();
+
+      $('searchInput').addEventListener('input', ()=>{
+        clearTimeout(window.__t);
+        window.__t=setTimeout(renderLessons, 160);
+      });
+      $('chapterFilter').addEventListener('change', renderLessons);
+      $('sortSelect').addEventListener('change', renderLessons);
+    }
+
+    // =============================
+    // Boot
+    // =============================
+    document.addEventListener('DOMContentLoaded', async ()=>{
+      // زر الرجوع
+      $('btnBackPage').addEventListener('click', smartBackPage);
+
+      renderSkeleton();
+
+      const st = await loadStudentMe();
+      if(!st) return;
+      $('studentNameDisplay').innerText = `أهلاً، ${st.name || 'طالب'}`;
+
+      const teacherId = qs('teacherId');
+      if(!teacherId){
+        $('pageTitle').innerText = 'خطأ';
+        $('courseTitle').innerText = 'المدرس غير محدد';
+        $('lessonsList').innerHTML = `<div class="card p-8 text-center col-span-full">المدرس غير محدد.</div>`;
+        return;
+      }
+
+      const db = await loadAcademyPublic();
+      buildTeacherPage(db, teacherId, st);
+    });
+  </script>
+</body>
+</html>
