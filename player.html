@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>المشغّل | منصة التميز</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#020617;
+      --card: rgba(255,255,255,0.05);
+      --bd: rgba(255,255,255,0.10);
+      --accent:#0d9488;
+      --muted: rgba(255,255,255,0.65);
+    }
+    body{ font-family: 'Cairo', sans-serif; background: var(--bg); color: #fff; }
+
+    .app{ min-height:100vh; display:flex; flex-direction:column; }
+    .topbar{
+      position:sticky; top:0; z-index:50;
+      background: rgba(2,6,23,0.75);
+      backdrop-filter: blur(14px);
+      border-bottom:1px solid var(--bd);
+    }
+    .player-shell{ max-width: 1200px; margin: 18px auto; padding: 0 14px; width:100%; }
+    .card{
+      background: var(--card);
+      border: 1px solid var(--bd);
+      border-radius: 22px;
+      overflow:hidden;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.35);
+    }
+    .stage{ position:relative; background:#000; aspect-ratio:16/9; width:100%; overflow:hidden; }
+
+    video#v{ width:100%; height:100%; display:block; background:#000; }
+
+    #ytWrap{ position:absolute; inset:0; display:none; }
+    #ytPlayer{ position:absolute; inset:0; }
+
+    .tap-layer{
+      position:absolute; inset:0; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      z-index:6; user-select:none;
+    }
+    .tap-icon{
+      width:84px; height:84px; border-radius:22px;
+      background: rgba(2,6,23,0.65);
+      border:1px solid rgba(255,255,255,0.18);
+      display:flex; align-items:center; justify-content:center;
+      font-size:34px; transform: scale(0.92); opacity:0;
+      transition: 0.18s; box-shadow:0 14px 45px rgba(0,0,0,0.45);
+    }
+    .tap-layer.show .tap-icon{ opacity:1; transform: scale(1); }
+
+    .wm{ position:absolute; inset:0; pointer-events:none; z-index:7; opacity:0.15; mix-blend-mode:screen; }
+    .wm span{
+      position:absolute; font-weight:900; font-size:14px;
+      color: rgba(255,255,255,0.85);
+      text-shadow:0 2px 12px rgba(0,0,0,0.65);
+      background: rgba(0,0,0,0.10);
+      border:1px solid rgba(255,255,255,0.10);
+      padding:6px 10px; border-radius:999px;
+      backdrop-filter: blur(6px);
+      white-space:nowrap; transform: rotate(-12deg);
+    }
+
+    .controls{
+      position:absolute; left:0; right:0; bottom:0; z-index:10;
+      padding: 12px 12px 10px;
+      background: linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0.00));
+      transition:0.2s;
+    }
+    .controls.hidden{ opacity:0; pointer-events:none; }
+
+    .row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+    .btn{
+      background: rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:14px; padding:10px 12px;
+      font-weight:900; font-size:12px; cursor:pointer;
+      user-select:none; transition:0.18s;
+    }
+    .btn:hover{ transform: translateY(-1px); border-color: rgba(13,148,136,0.55); }
+    .btn.accent{ background: rgba(13,148,136,0.18); border-color: rgba(13,148,136,0.22); }
+
+    .pill{
+      font-size:12px; font-weight:900;
+      color: rgba(255,255,255,0.86);
+      background: rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.10);
+      padding:8px 10px; border-radius:999px;
+      white-space:nowrap;
+    }
+
+    .slider{ width:100%; accent-color: var(--accent); }
+
+    .select{
+      background: rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:14px; padding:10px 12px;
+      font-weight:900; font-size:12px;
+      outline:none; color:#fff;
+    }
+    .select option{ color:#000; }
+
+    .seekwrap{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+    .time{ font-variant-numeric: tabular-nums; font-weight:900; font-size:12px; color:rgba(255,255,255,0.85); min-width:92px; text-align:center; }
+
+    .theater .player-shell{ max-width: 1600px; }
+    .theater .card{ border-radius: 0; }
+
+    .privacy-blur{
+      position:absolute; inset:0; display:none; z-index:20;
+      background: rgba(2,6,23,0.82);
+      backdrop-filter: blur(10px);
+      align-items:center; justify-content:center;
+      text-align:center; padding:16px;
+    }
+    .privacy-blur.show{ display:flex; }
+    .privacy-box{
+      max-width:520px;
+      background: rgba(255,255,255,0.05);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:22px;
+      padding:18px;
+    }
+
+    .toast{
+      position:fixed; right:16px; bottom:16px; z-index:9999;
+      display:none; background: rgba(2,6,23,0.92);
+      border:1px solid rgba(255,255,255,0.12);
+      padding:12px 14px; border-radius:18px;
+      box-shadow:0 18px 55px rgba(0,0,0,0.45);
+      max-width:360px;
+    }
+    .toast.show{ display:block; }
+
+    .no-select *{ user-select:none; -webkit-user-select:none; }
+    video::-webkit-media-controls{ display:none !important; }
+  </style>
+</head>
+
+<body class="no-select">
+  <div class="app" id="app">
+    <div class="topbar">
+      <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <button class="btn" id="btnBack">⬅️ رجوع</button>
+          <div class="min-w-0">
+            <div class="text-xs font-black text-teal-400">مشاهدة داخل المنصة</div>
+            <div id="title" class="text-white font-black text-base truncate">جاري التحميل...</div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap justify-end">
+          <div id="studentPill" class="pill">—</div>
+          <button class="btn" id="btnTheater">🎥 وضع سينما</button>
+          <button class="btn" id="btnPip">🗔 PiP</button>
+          <button class="btn accent" id="btnFullscreen">⛶ ملء الشاشة</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="player-shell">
+      <div class="card">
+        <div class="stage" id="stage">
+          <video id="v" playsinline preload="metadata"></video>
+
+          <div id="ytWrap">
+            <div id="ytPlayer"></div>
+          </div>
+
+          <div id="privacy" class="privacy-blur">
+            <div class="privacy-box">
+              <div class="text-3xl mb-3">🔒</div>
+              <div class="font-black text-white text-lg">تم إخفاء الفيديو مؤقتًا</div>
+              <div class="text-sm font-bold mt-2" style="color: var(--muted);">
+                عند تبديل التبويب/تصغير الصفحة، بنوقف العرض مؤقتًا لتقليل التسريب.
+              </div>
+              <button class="btn accent mt-4" onclick="resumeFromPrivacy()">▶️ متابعة</button>
+            </div>
+          </div>
+
+          <div class="wm" id="wm"></div>
+
+          <div class="tap-layer" id="tapLayer" title="اضغط للتشغيل/الإيقاف">
+            <div class="tap-icon" id="tapIcon">▶️</div>
+          </div>
+
+          <div class="controls" id="controls">
+            <div class="seekwrap">
+              <div class="time" id="tCur">00:00</div>
+              <input id="seek" class="slider" type="range" min="0" max="1000" value="0" step="1" />
+              <div class="time" id="tDur">00:00</div>
+            </div>
+
+            <div class="row">
+              <button class="btn accent" id="btnPlay">▶️ تشغيل</button>
+              <button class="btn" id="btnBack10">⏪ 10ث</button>
+              <button class="btn" id="btnFwd10">10ث ⏩</button>
+
+              <div class="pill" id="statusPill">جاهز</div>
+
+              <div style="flex:1"></div>
+
+              <label class="pill" style="display:flex; align-items:center; gap:10px;">
+                🔊
+                <input id="vol" class="slider" type="range" min="0" max="1" step="0.01" value="1" style="width:120px;">
+              </label>
+
+              <select id="speed" class="select" title="السرعة">
+                <option value="0.5">0.5x</option>
+                <option value="0.75">0.75x</option>
+                <option value="1" selected>1x</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+                <option value="1.75">1.75x</option>
+                <option value="2">2x</option>
+              </select>
+
+              <select id="quality" class="select" title="الجودة" style="display:none;"></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-4 py-3 border-t" style="border-color: rgba(255,255,255,0.08); background: rgba(255,255,255,0.02);">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="text-xs font-bold" style="color: var(--muted);">
+              اختصارات: Space تشغيل/إيقاف • ←/→ تقديم/تأخير 5 ث • F ملء الشاشة
+            </div>
+            <div class="text-xs font-black text-teal-400">© منصة التميز</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast">
+      <div id="toastMsg" class="text-sm font-black text-white">...</div>
+      <div class="text-xs font-bold mt-1" style="color: var(--muted);">معلومة سريعة</div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function qs(name){ return new URLSearchParams(location.search).get(name); }
+
+    function showToast(msg){
+      $('toastMsg').innerText = msg || '';
+      $('toast').classList.add('show');
+      clearTimeout(window.__toastT);
+      window.__toastT = setTimeout(()=> $('toast').classList.remove('show'), 2200);
+    }
+
+    function fmtTime(sec){
+      sec = Math.max(0, Number(sec||0));
+      const h = Math.floor(sec/3600);
+      const m = Math.floor((sec%3600)/60);
+      const s = Math.floor(sec%60);
+      if (h>0) return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+
+    function setStatus(txt){ $('statusPill').innerText = txt || ''; }
+
+    // ==============================
+    // Smart Back (Player)
+    // ==============================
+    function smartBackPlayer(){
+      // 1) أفضل: آخر صفحة كورسات محفوظة
+      const last = sessionStorage.getItem('nav:lastPage');
+      if (last) { location.href = last; return; }
+
+      // 2) referrer من نفس الدومين
+      try{
+        if (document.referrer) {
+          const ref = new URL(document.referrer);
+          if (ref.origin === location.origin) { location.href = document.referrer; return; }
+        }
+      }catch{}
+
+      // 3) history
+      if (history.length > 1) { history.back(); return; }
+
+      // 4) fallback
+      location.href = '/index.html';
+    }
+
+    // ==============================
+    // “Deterrence” (مش منع 100%)
+    // ==============================
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    function privacyOn(){ $('privacy').classList.add('show'); pauseAny(); }
+    function privacyOff(){ $('privacy').classList.remove('show'); }
+    function resumeFromPrivacy(){ privacyOff(); playAny(); }
+    window.resumeFromPrivacy = resumeFromPrivacy;
+
+    document.addEventListener('visibilitychange', () => { if (document.hidden) privacyOn(); });
+
+    function buildWatermark(text){
+      const wm = $('wm');
+      wm.innerHTML = '';
+      const spots = [[10,12],[55,8],[78,18],[18,46],[62,52],[82,62],[8,72],[45,78],[72,82],[20,88]];
+      spots.forEach((p,i)=>{
+        const s = document.createElement('span');
+        s.textContent = text;
+        s.style.left = p[0] + '%';
+        s.style.top  = p[1] + '%';
+        s.style.opacity = String(0.65 - (i%3)*0.12);
+        wm.appendChild(s);
+      });
+
+      let t = 0;
+      clearInterval(window.__wmI);
+      window.__wmI = setInterval(()=>{
+        t++;
+        [...wm.children].forEach((el, i)=>{
+          const dx = Math.sin((t+i)*0.07) * 14;
+          const dy = Math.cos((t+i)*0.06) * 10;
+          el.style.transform = `translate(${dx}px,${dy}px) rotate(-12deg)`;
+        });
+      }, 260);
+    }
+
+    async function fetchJSON(url, options={}){
+      const res = await fetch(url, { credentials:'include', ...options });
+      let data = {};
+      try{ data = await res.json(); }catch{}
+      return {res, data};
+    }
+
+    async function loadStudentMe(){
+      const {res, data} = await fetchJSON('/api/student/me');
+      if (!res.ok || !data?.authenticated) return null;
+      return data.student || null;
+    }
+
+    async function loadPlay(lessonId){
+      return await fetchJSON(`/api/lessons/${encodeURIComponent(lessonId)}/play`);
+    }
+
+    // ==============================
+    // Engines
+    // ==============================
+    let MODE = null; // 'html5' | 'youtube'
+    let hls = null;
+
+    let yt = null;
+    let ytReady = false;
+
+    function ensureYouTubeAPI(){
+      return new Promise((resolve) => {
+        if (window.YT && window.YT.Player) return resolve();
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(tag);
+        window.onYouTubeIframeAPIReady = () => resolve();
+      });
+    }
+
+    function showTap(icon){
+      $('tapIcon').innerText = icon;
+      $('tapLayer').classList.add('show');
+      clearTimeout(window.__tapT);
+      window.__tapT = setTimeout(()=> $('tapLayer').classList.remove('show'), 520);
+    }
+
+    function showControls(){
+      $('controls').classList.remove('hidden');
+      clearTimeout(window.__hideC);
+      window.__hideC = setTimeout(()=> $('controls').classList.add('hidden'), 2400);
+    }
+
+    function wireStageActivity(){
+      const stage = $('stage');
+      stage.addEventListener('mousemove', showControls);
+      stage.addEventListener('touchstart', showControls, {passive:true});
+    }
+
+    function isPlaying(){
+      if (MODE === 'html5') return !$('v').paused;
+      if (MODE === 'youtube' && yt) return (yt.getPlayerState?.() === 1);
+      return false;
+    }
+
+    function playAny(){
+      if (MODE === 'html5') $('v').play().catch(()=>{});
+      if (MODE === 'youtube' && yt) yt.playVideo?.();
+      setStatus('تشغيل'); showTap('⏸️'); showControls();
+    }
+
+    function pauseAny(){
+      if (MODE === 'html5') $('v').pause();
+      if (MODE === 'youtube' && yt) yt.pauseVideo?.();
+      setStatus('متوقف'); showTap('▶️'); showControls();
+    }
+
+    function toggleAny(){ isPlaying() ? pauseAny() : playAny(); }
+
+    function seekBy(delta){
+      if (MODE === 'html5') $('v').currentTime = Math.max(0, ($('v').currentTime||0) + delta);
+      if (MODE === 'youtube' && yt){
+        const t = yt.getCurrentTime?.() || 0;
+        yt.seekTo?.(Math.max(0, t + delta), true);
+      }
+    }
+
+    function setupHTML5(url){
+      MODE = 'html5';
+      $('ytWrap').style.display = 'none';
+      $('v').style.display = 'block';
+      $('quality').style.display = 'none';
+      $('quality').innerHTML = '';
+
+      try{ $('v').pause(); }catch{}
+      $('v').removeAttribute('src');
+      $('v').load();
+
+      if (hls) { try{ hls.destroy(); }catch{} hls = null; }
+
+      const isM3U8 = /\.m3u8(\?|#|$)/i.test(url);
+
+      if (isM3U8 && window.Hls && Hls.isSupported()){
+        hls = new Hls({ maxBufferLength: 30, backBufferLength: 15 });
+        hls.loadSource(url);
+        hls.attachMedia($('v'));
+
+        hls.on(Hls.Events.MANIFEST_PARSED, ()=>{
+          setStatus('جاهز');
+          initHLSQualityUI();
+          $('v').play().catch(()=>{});
+        });
+
+        hls.on(Hls.Events.ERROR, ()=>{
+          setStatus('خطأ في البث');
+          showToast('حصلت مشكلة في البث.');
+        });
+      } else {
+        $('v').src = url;
+        $('v').play().catch(()=>{});
+        setStatus('جاهز');
+      }
+
+      $('v').addEventListener('timeupdate', syncTimeUI);
+      $('v').addEventListener('loadedmetadata', syncTimeUI);
+      $('v').addEventListener('ended', ()=>{ setStatus('انتهى'); showTap('↩️'); });
+      $('v').addEventListener('play', ()=> setStatus('تشغيل'));
+      $('v').addEventListener('pause', ()=> setStatus('متوقف'));
+    }
+
+    function initHLSQualityUI(){
+      if (!hls || !hls.levels || !hls.levels.length) return;
+      const q = $('quality');
+      q.style.display = 'block';
+
+      const levels = hls.levels.map((lvl, idx)=>{
+        const h = lvl.height ? `${lvl.height}p` : `L${idx}`;
+        const br = lvl.bitrate ? ` • ${Math.round(lvl.bitrate/1000)}kb` : '';
+        return { idx, label: `${h}${br}` };
+      });
+
+      q.innerHTML = `<option value="-1">تلقائي</option>` +
+        levels.map(l=>`<option value="${l.idx}">${l.label}</option>`).join('');
+
+      q.value = String(hls.currentLevel ?? -1);
+
+      q.onchange = ()=>{
+        const val = Number(q.value);
+        hls.currentLevel = val;
+        showToast(val === -1 ? 'الجودة: تلقائي' : `الجودة: ${levels.find(x=>x.idx===val)?.label || ''}`);
+      };
+    }
+
+    async function setupYouTube(videoId){
+      MODE = 'youtube';
+      $('v').style.display = 'none';
+      $('ytWrap').style.display = 'block';
+      $('quality').style.display = 'none';
+
+      await ensureYouTubeAPI();
+
+      if (yt) { try{ yt.destroy(); }catch{} yt = null; }
+      ytReady = false;
+
+      yt = new YT.Player('ytPlayer', {
+        videoId,
+        playerVars: { autoplay: 1, controls: 0, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3, fs: 0, origin: location.origin },
+        events: {
+          onReady: ()=>{ ytReady = true; setStatus('جاهز'); yt.playVideo(); startYTPoll(); },
+          onStateChange: (e)=>{ if(e.data===1) setStatus('تشغيل'); else if(e.data===2) setStatus('متوقف'); else if(e.data===0) setStatus('انتهى'); }
+        }
+      });
+    }
+
+    function startYTPoll(){
+      clearInterval(window.__ytPoll);
+      window.__ytPoll = setInterval(()=>{
+        if (MODE !== 'youtube' || !yt || !ytReady) return;
+        const cur = yt.getCurrentTime?.() || 0;
+        const dur = yt.getDuration?.() || 0;
+        syncTimeUI(cur, dur);
+      }, 250);
+    }
+
+    function syncTimeUI(curOverride, durOverride){
+      let cur = 0, dur = 0;
+
+      if (MODE === 'html5'){
+        cur = $('v').currentTime || 0;
+        dur = $('v').duration || 0;
+      } else if (MODE === 'youtube'){
+        cur = Number(curOverride ?? 0);
+        dur = Number(durOverride ?? 0);
+      }
+
+      $('tCur').innerText = fmtTime(cur);
+      $('tDur').innerText = fmtTime(dur);
+
+      const max = 1000;
+      const val = dur > 0 ? Math.round((cur/dur) * max) : 0;
+      if (!window.__seeking) $('seek').value = String(val);
+    }
+
+    function wireControls(){
+      $('btnBack').addEventListener('click', smartBackPlayer);
+
+      $('tapLayer').addEventListener('click', toggleAny);
+      $('btnPlay').addEventListener('click', toggleAny);
+      $('btnBack10').addEventListener('click', ()=> seekBy(-10));
+      $('btnFwd10').addEventListener('click', ()=> seekBy(10));
+
+      $('seek').addEventListener('input', ()=>{ window.__seeking = true; });
+      $('seek').addEventListener('change', ()=>{
+        const val = Number($('seek').value || 0);
+        const max = 1000;
+
+        if (MODE === 'html5'){
+          const dur = $('v').duration || 0;
+          if (dur > 0) $('v').currentTime = (val/max) * dur;
+        } else if (MODE === 'youtube' && yt){
+          const dur = yt.getDuration?.() || 0;
+          if (dur > 0) yt.seekTo?.((val/max) * dur, true);
+        }
+        window.__seeking = false;
+      });
+
+      $('vol').addEventListener('input', ()=>{
+        const v = Number($('vol').value || 1);
+        if (MODE === 'html5') $('v').volume = v;
+        else if (MODE === 'youtube' && yt) yt.setVolume?.(Math.round(v*100));
+      });
+
+      $('speed').addEventListener('change', ()=>{
+        const rate = Number($('speed').value || 1);
+        if (MODE === 'html5') $('v').playbackRate = rate;
+        if (MODE === 'youtube' && yt) yt.setPlaybackRate?.(rate);
+        showToast(`السرعة: ${rate}x`);
+      });
+
+      $('btnFullscreen').addEventListener('click', toggleFullscreen);
+      $('btnTheater').addEventListener('click', toggleTheater);
+      $('btnPip').addEventListener('click', togglePiP);
+
+      window.addEventListener('keydown', (e)=>{
+        const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+        if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+
+        if (e.code === 'Space') { e.preventDefault(); toggleAny(); }
+        else if (e.key === 'ArrowLeft') { seekBy(-5); showControls(); }
+        else if (e.key === 'ArrowRight') { seekBy(5); showControls(); }
+        else if (e.key.toLowerCase() === 'f') { toggleFullscreen(); }
+      });
+    }
+
+    function toggleFullscreen(){
+      const el = $('stage');
+      if (!document.fullscreenElement) el.requestFullscreen?.().catch(()=>{});
+      else document.exitFullscreen?.().catch(()=>{});
+    }
+
+    function toggleTheater(){
+      document.body.classList.toggle('theater');
+      showToast(document.body.classList.contains('theater') ? 'وضع السينما: تشغيل' : 'وضع السينما: إيقاف');
+    }
+
+    async function togglePiP(){
+      if (MODE !== 'html5') { showToast('PiP متاح فقط لمشغل HTML5.'); return; }
+      const v = $('v');
+      try{
+        if (document.pictureInPictureElement) await document.exitPictureInPicture();
+        else await v.requestPictureInPicture();
+      }catch{
+        showToast('PiP غير مدعوم على هذا المتصفح.');
+      }
+    }
+
+    async function boot(){
+      wireStageActivity();
+      wireControls();
+      showControls();
+
+      const lessonId = qs('lessonId');
+      const titleHint = qs('title');
+
+      if (!lessonId){
+        $('title').innerText = 'خطأ: lessonId غير موجود';
+        setStatus('خطأ');
+        return;
+      }
+
+      const st = await loadStudentMe();
+      const name = st?.name || 'Student';
+      const code = st?.code || st?.studentCode || '---';
+      $('studentPill').innerText = `👤 ${name} • ${code}`;
+      buildWatermark(`${name} • ${code} • ${new Date().toLocaleDateString('ar-EG')}`);
+
+      setStatus('جاري التجهيز...');
+      const {res, data} = await loadPlay(lessonId);
+
+      if (!res.ok){
+        if (res.status === 401 || res.status === 403){
+          $('title').innerText = 'غير مصرح';
+          setStatus('ممنوع');
+          showToast('غير مسموح لك بالمشاهدة.');
+          privacyOn();
+          return;
+        }
+        $('title').innerText = 'تعذر التحميل';
+        setStatus('خطأ');
+        showToast('حصل خطأ في تحميل الفيديو.');
+        return;
+      }
+
+      const title = data?.title || decodeURIComponent(titleHint || '') || 'محاضرة';
+      $('title').innerText = title;
+
+      if (data?.provider === 'youtube'){
+        if (!data.videoId){ setStatus('بيانات ناقصة'); showToast('videoId غير موجود.'); return; }
+        await setupYouTube(data.videoId);
+      } else {
+        const url = data?.playbackUrl;
+        if (!url){ setStatus('بيانات ناقصة'); showToast('playbackUrl غير موجود.'); return; }
+        setupHTML5(url);
+      }
+
+      privacyOff();
+    }
+
+    boot();
+  </script>
+</body>
+</html>
