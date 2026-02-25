@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>إدارة الاشتراكات المتقدمة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --teal: #0d9488; --slate: #0f172a; --gold: #fbbf24; }
+        body { font-family: 'Cairo', sans-serif; background: #f8fafc; padding: 20px; }
+        .glass-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); max-width: 1000px; margin: auto; }
+        .student-row { 
+            display: grid; grid-template-columns: 2fr 1fr 2fr; 
+            align-items: center; padding: 15px; border-bottom: 1px solid #eee; transition: 0.2s;
+        }
+        .student-row:hover { background: #f1f5f9; }
+        .price-tag { font-size: 12px; color: var(--teal); font-weight: bold; display: block; margin-top: 4px; }
+        .btn-group { display: flex; gap: 5px; }
+        .btn { border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: bold; font-size: 13px; }
+        .btn-month { background: #e0f2f1; color: #00796b; border: 1px solid #b2dfdb; }
+        .btn-year { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .status-badge { padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 900; }
+        .active { background: #dcfce7; color: #166534; }
+        .expired { background: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body>
+
+<div class="glass-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2 style="margin:0">👥 إدارة الطلاب والاشتراكات</h2>
+        <div id="priceDisplay" style="text-align:left">
+            </div>
+    </div>
+
+    <input type="text" id="searchBar" placeholder="ابحث بكود الطالب أو الاسم..." onkeyup="loadStudents()" 
+           style="width:100%; padding:12px; border-radius:12px; border:1px solid #ddd; margin-bottom:20px; box-sizing:border-box;">
+
+    <div id="listHeader" class="student-row" style="background:#f1f5f9; font-weight:900; border-radius:10px;">
+        <div>بيانات الطالب</div>
+        <div>حالة الاشتراك</div>
+        <div>تفعيل باقة جديدة</div>
+    </div>
+    <div id="studentsList"></div>
+</div>
+
+<script>
+    let db = JSON.parse(localStorage.getItem('academyDB')) || { users: [], prices: {month: 0, year: 0}, monthlyIncome: 0 };
+
+    function loadStudents() {
+        const term = document.getElementById('searchBar').value.toLowerCase();
+        const container = document.getElementById('studentsList');
+        const priceBox = document.getElementById('priceDisplay');
+        
+        // عرض الأسعار الحالية للمالك
+        priceBox.innerHTML = `
+            <span class="price-tag">الشهري: ${db.prices?.month || 0} ج.م</span>
+            <span class="price-tag">السنوي: ${db.prices?.year || 0} ج.م</span>
+        `;
+
+        container.innerHTML = "";
+        const filtered = db.users.filter(u => u.name.toLowerCase().includes(term) || u.code.includes(term));
+
+        filtered.forEach(u => {
+            const status = checkStatus(u.expiryDate);
+            container.innerHTML += `
+                <div class="student-row">
+                    <div>
+                        <strong>${u.name}</strong> <br>
+                        <small>كود: ${u.code}</small>
+                    </div>
+                    <div>
+                        <span class="status-badge ${status.active ? 'active' : 'expired'}">${status.text}</span>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-month" onclick="activate('${u.code}', 30, 'month')">تفعيل شهري</button>
+                        <button class="btn btn-year" onclick="activate('${u.code}', 365, 'year')">تفعيل سنوي 👑</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    function checkStatus(expiry) {
+        if (!expiry) return { active: false, text: "غير مفعل" };
+        const now = new Date().getTime();
+        if (expiry < now) return { active: false, text: "منتهي" };
+        const days = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+        return { active: true, text: `نشط (${days} يوم)` };
+    }
+
+    function activate(code, days, type) {
+        const userIndex = db.users.findIndex(u => u.code === code);
+        const price = type === 'month' ? parseInt(db.prices.month) : parseInt(db.prices.year);
+
+        if (!price || price <= 0) {
+            alert("يرجى تحديد سعر الباقة أولاً من الإعدادات بصفحة المالك!");
+            return;
+        }
+
+        if (confirm(`تفعيل الاشتراك الـ ${type === 'month' ? 'شهري' : 'سنوي'} للطالب؟\nسيتم إضافة ${price} ج.م للأرباح.`)) {
+            let currentExpiry = db.users[userIndex].expiryDate;
+            let start = (currentExpiry && currentExpiry > new Date().getTime()) ? currentExpiry : new Date().getTime();
+            
+            // تحديث التاريخ
+            db.users[userIndex].expiryDate = start + (days * 24 * 60 * 60 * 1000);
+            
+            // إضافة السعر للدخل الشهري في الإحصائيات
+            db.monthlyIncome = (db.monthlyIncome || 0) + price;
+
+            localStorage.setItem('academyDB', JSON.stringify(db));
+            alert("تم التفعيل وتحديث الأرباح بنجاح ✅");
+            loadStudents();
+        }
+    }
+
+    window.onload = loadStudents;
+</script>
+</body>
+</html>
